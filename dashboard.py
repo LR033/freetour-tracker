@@ -14,7 +14,7 @@ from datetime import date, timedelta
 # ---------------------------------------------------------------------------
 
 GITHUB_RAW_URL = (
-    "https://raw.githubusercontent.com/YOUR_USERNAME/freetour-tracker/main/rankings.csv"
+    "https://raw.githubusercontent.com/LR033/freetour-tracker/main/rankings.csv"
 )
 
 TARGET_TOURS = [
