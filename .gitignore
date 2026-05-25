@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+probe.png
+debug.png
+tracker.log
+.DS_Store
