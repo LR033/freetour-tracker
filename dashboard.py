@@ -83,6 +83,12 @@ NOTE_PLATFORM_OPTIONS = {
     "Both platforms":  "both",
 }
 
+PLATFORM_DISPLAY = {
+    "freetour": "Freetour.com",
+    "guruwalk": "GuruWalk",
+    "both":     "Both",
+}
+
 # ---------------------------------------------------------------------------
 # GitHub API helpers
 # ---------------------------------------------------------------------------
@@ -120,11 +126,32 @@ def _put_file(path: str, content: str, sha, message: str) -> bool:
     return r.status_code in (200, 201)
 
 
-def save_note(note_date: str, platform: str, note_text: str):
-    """Append one row to notes.csv via the GitHub Contents API."""
+def _require_token():
     token = st.secrets.get("github_token", "")
     if not token:
-        return False, "github_token not set. Add it to Streamlit secrets (see DEPLOY.md)."
+        return None, "github_token not set. Add it to Streamlit secrets (see DEPLOY.md)."
+    return token, None
+
+
+def _parse_notes(content: str) -> list:
+    """Return list of dicts from notes CSV string."""
+    return list(csv.DictReader(io.StringIO(content)))
+
+
+def _serialize_notes(rows: list) -> str:
+    """Serialize list of dicts back to CSV string."""
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=["date", "platform", "note"])
+    w.writeheader()
+    w.writerows(rows)
+    return buf.getvalue()
+
+
+def save_note(note_date: str, platform: str, note_text: str):
+    """Append one row to notes.csv via the GitHub Contents API."""
+    token, err = _require_token()
+    if err:
+        return False, err
 
     current, sha = _get_file("notes.csv")
     if current is None:
@@ -134,15 +161,62 @@ def save_note(note_date: str, platform: str, note_text: str):
     csv.writer(buf).writerow([note_date, platform, note_text])
     new_content = current.rstrip("\n") + "\n" + buf.getvalue()
 
-    ok = _put_file(
-        "notes.csv",
-        new_content,
-        sha,
-        f"note: {note_date} [{platform}]",
-    )
+    ok = _put_file("notes.csv", new_content, sha, f"note: {note_date} [{platform}]")
     if ok:
         return True, "Note saved and pushed to GitHub."
     return False, "GitHub API returned an error. Check your token permissions."
+
+
+def delete_note(date_str: str, platform: str, note_text: str):
+    """Remove a matching row from notes.csv and commit."""
+    token, err = _require_token()
+    if err:
+        return False, err
+
+    current, sha = _get_file("notes.csv")
+    if current is None:
+        return False, "notes.csv not found on GitHub."
+
+    rows = _parse_notes(current)
+    kept = [r for r in rows if not (
+        r["date"] == date_str and r["platform"] == platform and r["note"] == note_text
+    )]
+    if len(kept) == len(rows):
+        return False, "Note not found -- it may have already been deleted."
+
+    ok = _put_file("notes.csv", _serialize_notes(kept), sha, f"delete note: {date_str}")
+    if ok:
+        return True, "Note deleted."
+    return False, "GitHub API error."
+
+
+def edit_note(date_str: str, old_platform: str, old_note: str,
+              new_platform: str, new_note: str):
+    """Replace a matching row in notes.csv and commit."""
+    token, err = _require_token()
+    if err:
+        return False, err
+
+    current, sha = _get_file("notes.csv")
+    if current is None:
+        return False, "notes.csv not found on GitHub."
+
+    rows = _parse_notes(current)
+    found = False
+    for r in rows:
+        if r["date"] == date_str and r["platform"] == old_platform and r["note"] == old_note:
+            r["platform"] = new_platform
+            r["note"] = new_note
+            found = True
+            break
+
+    if not found:
+        return False, "Note not found -- it may have changed. Refresh and try again."
+
+    ok = _put_file("notes.csv", _serialize_notes(rows), sha, f"edit note: {date_str}")
+    if ok:
+        return True, "Note updated."
+    return False, "GitHub API error."
 
 
 # ---------------------------------------------------------------------------
@@ -213,6 +287,10 @@ st.markdown(
 
 df      = load_rankings()
 notes   = load_notes()
+
+# Tracks which note is currently open for editing: (date_str, platform, note_text) or None
+if "editing_note" not in st.session_state:
+    st.session_state.editing_note = None
 
 # ---------------------------------------------------------------------------
 # Sidebar -- settings
@@ -465,23 +543,81 @@ fig.update_yaxes(showgrid=True, gridcolor="#f0f0f0")
 st.plotly_chart(fig, use_container_width=True)
 
 # ---------------------------------------------------------------------------
-# Notes log
+# Notes log (with edit + delete)
 # ---------------------------------------------------------------------------
 
 if not notes.empty:
-    visible_notes = notes[notes["platform"].isin([platform_key, "both"])].copy()
+    visible_notes = (
+        notes[notes["platform"].isin([platform_key, "both"])]
+        .copy()
+        .sort_values("date", ascending=False)
+    )
     if not visible_notes.empty:
         with st.expander(f"Notes ({len(visible_notes)})"):
-            visible_notes = visible_notes.sort_values("date", ascending=False)
-            visible_notes["date"] = visible_notes["date"].dt.strftime("%Y-%m-%d")
-            visible_notes["platform"] = visible_notes["platform"].map(
-                {"freetour": "Freetour", "guruwalk": "GuruWalk", "both": "Both"}
-            ).fillna(visible_notes["platform"])
-            st.dataframe(
-                visible_notes.rename(columns={"date": "Date", "platform": "Platform", "note": "Note"}),
-                use_container_width=True,
-                hide_index=True,
-            )
+            # Header row
+            h = st.columns([2, 2, 6, 1, 1])
+            h[0].markdown("**Date**")
+            h[1].markdown("**Platform**")
+            h[2].markdown("**Note**")
+            st.divider()
+
+            for _, row in visible_notes.iterrows():
+                date_str    = row["date"].strftime("%Y-%m-%d") if hasattr(row["date"], "strftime") else str(row["date"])[:10]
+                platform_val = str(row["platform"])
+                note_text    = str(row["note"])
+                row_key      = (date_str, platform_val, note_text)
+
+                if st.session_state.editing_note == row_key:
+                    # ---- edit mode ----
+                    ec = st.columns([2, 2, 5, 1, 1])
+                    ec[0].markdown(date_str)
+                    new_plat = ec[1].selectbox(
+                        "plat",
+                        options=["freetour", "guruwalk", "both"],
+                        index=["freetour", "guruwalk", "both"].index(platform_val),
+                        key=f"ep_{row_key}",
+                        label_visibility="collapsed",
+                    )
+                    new_text = ec[2].text_input(
+                        "note",
+                        value=note_text,
+                        key=f"et_{row_key}",
+                        label_visibility="collapsed",
+                    )
+                    if ec[3].button("💾", key=f"save_{row_key}", help="Save changes"):
+                        if new_text.strip():
+                            ok, msg = edit_note(date_str, platform_val, note_text,
+                                                new_plat, new_text.strip())
+                            if ok:
+                                st.session_state.editing_note = None
+                                st.cache_data.clear()
+                                st.rerun()
+                            else:
+                                st.error(msg)
+                        else:
+                            st.warning("Note text cannot be empty.")
+                    if ec[4].button("✕", key=f"cancel_{row_key}", help="Cancel"):
+                        st.session_state.editing_note = None
+                        st.rerun()
+                else:
+                    # ---- display mode ----
+                    dc = st.columns([2, 2, 5, 1, 1])
+                    dc[0].markdown(date_str)
+                    dc[1].markdown(PLATFORM_DISPLAY.get(platform_val, platform_val))
+                    dc[2].markdown(note_text)
+                    edit_disabled = not has_token
+                    if dc[3].button("✏️", key=f"edit_{row_key}", help="Edit note",
+                                    disabled=edit_disabled):
+                        st.session_state.editing_note = row_key
+                        st.rerun()
+                    if dc[4].button("🗑️", key=f"del_{row_key}", help="Delete note",
+                                    disabled=edit_disabled):
+                        ok, msg = delete_note(date_str, platform_val, note_text)
+                        if ok:
+                            st.cache_data.clear()
+                            st.rerun()
+                        else:
+                            st.error(msg)
 
 # ---------------------------------------------------------------------------
 # Raw data table
