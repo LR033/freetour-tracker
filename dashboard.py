@@ -422,18 +422,26 @@ if not relevant_notes.empty:
         label = " | ".join(group["note"].tolist())
         if len(label) > 50:
             label = label[:47] + "..."
-        fig.add_vline(
-            x=note_date.isoformat(),
-            line_dash="dash",
-            line_color="#aaa",
-            line_width=1.5,
-            annotation_text=label,
-            annotation_position="top left",
-            annotation_font_size=10,
-            annotation_font_color="#666",
-            annotation_bgcolor="rgba(255,255,255,0.85)",
-            annotation_bordercolor="#ccc",
-            annotation_borderwidth=1,
+        x_val = note_date.isoformat()
+        fig.add_shape(
+            type="line",
+            xref="x", yref="paper",
+            x0=x_val, x1=x_val,
+            y0=0, y1=1,
+            line=dict(color="#aaa", width=1.5, dash="dash"),
+        )
+        fig.add_annotation(
+            xref="x", yref="paper",
+            x=x_val, y=1,
+            text=label,
+            showarrow=False,
+            xanchor="left",
+            yanchor="top",
+            font=dict(size=10, color="#666"),
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#ccc",
+            borderwidth=1,
+            borderpad=3,
         )
 
 fig.update_layout(
