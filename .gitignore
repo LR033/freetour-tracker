@@ -5,3 +5,4 @@ probe.png
 debug.png
 tracker.log
 .DS_Store
+.streamlit/secrets.toml
