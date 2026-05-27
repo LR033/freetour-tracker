@@ -561,8 +561,8 @@ if not notes.empty:
             h[2].markdown("**Note**")
             st.divider()
 
-            for _, row in visible_notes.iterrows():
-                date_str    = row["date"].strftime("%Y-%m-%d") if hasattr(row["date"], "strftime") else str(row["date"])[:10]
+            for i, (_, row) in enumerate(visible_notes.iterrows()):
+                date_str     = row["date"].strftime("%Y-%m-%d") if hasattr(row["date"], "strftime") else str(row["date"])[:10]
                 platform_val = str(row["platform"])
                 note_text    = str(row["note"])
                 row_key      = (date_str, platform_val, note_text)
@@ -575,16 +575,16 @@ if not notes.empty:
                         "plat",
                         options=["freetour", "guruwalk", "both"],
                         index=["freetour", "guruwalk", "both"].index(platform_val),
-                        key=f"ep_{row_key}",
+                        key=f"ep_{i}_{row_key}",
                         label_visibility="collapsed",
                     )
                     new_text = ec[2].text_input(
                         "note",
                         value=note_text,
-                        key=f"et_{row_key}",
+                        key=f"et_{i}_{row_key}",
                         label_visibility="collapsed",
                     )
-                    if ec[3].button("💾", key=f"save_{row_key}", help="Save changes"):
+                    if ec[3].button("💾", key=f"save_{i}_{row_key}", help="Save changes"):
                         if new_text.strip():
                             ok, msg = edit_note(date_str, platform_val, note_text,
                                                 new_plat, new_text.strip())
@@ -596,7 +596,7 @@ if not notes.empty:
                                 st.error(msg)
                         else:
                             st.warning("Note text cannot be empty.")
-                    if ec[4].button("✕", key=f"cancel_{row_key}", help="Cancel"):
+                    if ec[4].button("✕", key=f"cancel_{i}_{row_key}", help="Cancel"):
                         st.session_state.editing_note = None
                         st.rerun()
                 else:
@@ -606,15 +606,15 @@ if not notes.empty:
                     dc[1].markdown(PLATFORM_DISPLAY.get(platform_val, platform_val))
                     dc[2].markdown(note_text)
                     edit_disabled = not has_token
-                    if dc[3].button("✏️", key=f"edit_{row_key}", help="Edit note",
+                    if dc[3].button("✏️", key=f"edit_{i}_{row_key}", help="Edit note",
                                     disabled=edit_disabled):
                         st.session_state.editing_note = row_key
                         st.rerun()
-                    if dc[4].button("🗑️", key=f"del_{row_key}", help="Delete note",
+                    if dc[4].button("🗑️", key=f"del_{i}_{row_key}", help="Delete note",
                                     disabled=edit_disabled):
                         ok, msg = delete_note(date_str, platform_val, note_text)
+                        st.cache_data.clear()   # always clear so stale CDN data can't re-show the note
                         if ok:
-                            st.cache_data.clear()
                             st.rerun()
                         else:
                             st.error(msg)
