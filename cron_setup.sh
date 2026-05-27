@@ -4,12 +4,11 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PYTHON="$SCRIPT_DIR/.venv/bin/python"
-TRACKER="$SCRIPT_DIR/tracker.py"
+RUNNER="$SCRIPT_DIR/run_all.py"
 LOG="$SCRIPT_DIR/tracker.log"
 
-CRON_LINE="0 10 * * * $PYTHON $TRACKER >> $LOG 2>&1"
+CRON_LINE="0 10 * * * $PYTHON $RUNNER >> $LOG 2>&1"
 
-# Write directly — avoids pipe-to-crontab issues on macOS
 printf "%s\n" "$CRON_LINE" | crontab -
 
 echo "Cron job installed:"

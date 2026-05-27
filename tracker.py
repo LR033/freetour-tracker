@@ -137,9 +137,9 @@ def save_to_csv(results: dict) -> None:
     with open(RANKINGS_FILE, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         if not file_exists:
-            writer.writerow(["date", "tour", "position"])
+            writer.writerow(["date", "source", "tour", "position"])
         for tour, pos in results.items():
-            writer.writerow([today, tour, pos if pos is not None else ""])
+            writer.writerow([today, "freetour", tour, pos if pos is not None else ""])
 
     print(f"\nResults saved to {RANKINGS_FILE}")
 
@@ -156,6 +156,8 @@ def generate_chart() -> None:
     df = pd.read_csv(RANKINGS_FILE, parse_dates=["date"])
     df = df.dropna(subset=["position"])
     df["position"] = df["position"].astype(int)
+    if "source" in df.columns:
+        df = df[df["source"] == "freetour"]
 
     if df.empty:
         print("No valid position data to chart.")
