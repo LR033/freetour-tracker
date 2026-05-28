@@ -239,8 +239,8 @@ def load_rankings() -> pd.DataFrame:
     return df
 
 
-@st.cache_data(ttl=300)   # 5-min cache so new notes appear quickly
 def load_notes() -> pd.DataFrame:
+    """Fetch notes from GitHub raw URL. Called only on fresh page load."""
     try:
         df = pd.read_csv(NOTES_RAW, parse_dates=["date"])
         return df[["date", "platform", "note"]].dropna(subset=["note"])
@@ -285,30 +285,19 @@ st.markdown(
 # Load data
 # ---------------------------------------------------------------------------
 
-df      = load_rankings()
-notes   = load_notes()
+df = load_rankings()
+
+# Session state is the single source of truth for notes.
+# On fresh page load (notes_df absent) we fetch from GitHub.
+# After any mutation we update session state directly -- no cache involved.
+if "notes_df" not in st.session_state:
+    st.session_state.notes_df = load_notes()
+
+notes = st.session_state.notes_df
 
 # Tracks which note is currently open for editing: (date_str, platform, note_text) or None
 if "editing_note" not in st.session_state:
     st.session_state.editing_note = None
-
-# Keys of notes deleted this session but not yet evicted from the read cache.
-# Used to hide them from the UI immediately after deletion.
-if "pending_deletes" not in st.session_state:
-    st.session_state.pending_deletes = set()
-
-# Prune any pending_delete keys that are no longer in the freshly loaded notes
-# (cache has caught up -- the note is truly gone, no need to hide it any more).
-if st.session_state.pending_deletes and not notes.empty:
-    loaded_keys = {
-        (
-            row["date"].strftime("%Y-%m-%d") if hasattr(row["date"], "strftime") else str(row["date"])[:10],
-            str(row["platform"]),
-            str(row["note"]),
-        )
-        for _, row in notes.iterrows()
-    }
-    st.session_state.pending_deletes &= loaded_keys
 
 # ---------------------------------------------------------------------------
 # Sidebar -- settings
@@ -395,7 +384,15 @@ if submitted:
         )
         if ok:
             st.sidebar.success(msg)
-            st.cache_data.clear()   # force fresh load of notes on next render
+            # Append to session state immediately so the note shows without a round-trip
+            new_row = pd.DataFrame([{
+                "date": pd.to_datetime(str(note_date_input)),
+                "platform": platform_val,
+                "note": note_text_input.strip(),
+            }])
+            st.session_state.notes_df = pd.concat(
+                [st.session_state.notes_df, new_row], ignore_index=True
+            )
             st.rerun()
         else:
             st.sidebar.error(msg)
@@ -610,8 +607,17 @@ if not notes.empty:
                             ok, msg = edit_note(date_str, platform_val, note_text,
                                                 new_plat, new_text.strip())
                             if ok:
+                                # Update session state immediately -- no cache delay
+                                ndf = st.session_state.notes_df.copy()
+                                mask = (
+                                    (ndf["date"].dt.strftime("%Y-%m-%d") == date_str)
+                                    & (ndf["platform"] == platform_val)
+                                    & (ndf["note"] == note_text)
+                                )
+                                ndf.loc[mask, "platform"] = new_plat
+                                ndf.loc[mask, "note"] = new_text.strip()
+                                st.session_state.notes_df = ndf
                                 st.session_state.editing_note = None
-                                st.cache_data.clear()
                                 st.rerun()
                             else:
                                 st.error(msg)
@@ -634,9 +640,15 @@ if not notes.empty:
                     if dc[4].button("🗑️", key=f"del_{i}_{row_key}", help="Delete note",
                                     disabled=edit_disabled):
                         ok, msg = delete_note(date_str, platform_val, note_text)
-                        st.cache_data.clear()
                         if ok:
-                            st.session_state.pending_deletes.add(row_key)
+                            # Drop from session state immediately -- no cache delay
+                            ndf = st.session_state.notes_df.copy()
+                            mask = (
+                                (ndf["date"].dt.strftime("%Y-%m-%d") == date_str)
+                                & (ndf["platform"] == platform_val)
+                                & (ndf["note"] == note_text)
+                            )
+                            st.session_state.notes_df = ndf[~mask].reset_index(drop=True)
                             st.rerun()
                         else:
                             st.error(msg)
