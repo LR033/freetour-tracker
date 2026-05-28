@@ -130,10 +130,14 @@ async def scrape_positions() -> dict:
                 break
             load_round += 1
             print(f"  Loading more results (page {load_round + 1}) …")
-            await show_more.scroll_into_view_if_needed()
-            await show_more.click()
-            await page.wait_for_load_state("networkidle", timeout=20_000)
-            await page.wait_for_timeout(1_000)
+            try:
+                await show_more.scroll_into_view_if_needed()
+                await show_more.click(force=True)
+                await page.wait_for_load_state("networkidle", timeout=20_000)
+                await page.wait_for_timeout(1_000)
+            except Exception as e:
+                print(f"  Show more button detached or unavailable; all results loaded.")
+                break
 
         # --- Collect all tour cards ---
         cards = await page.query_selector_all(".city-tour.js-city-tour")
