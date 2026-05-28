@@ -292,6 +292,24 @@ notes   = load_notes()
 if "editing_note" not in st.session_state:
     st.session_state.editing_note = None
 
+# Keys of notes deleted this session but not yet evicted from the read cache.
+# Used to hide them from the UI immediately after deletion.
+if "pending_deletes" not in st.session_state:
+    st.session_state.pending_deletes = set()
+
+# Prune any pending_delete keys that are no longer in the freshly loaded notes
+# (cache has caught up -- the note is truly gone, no need to hide it any more).
+if st.session_state.pending_deletes and not notes.empty:
+    loaded_keys = {
+        (
+            row["date"].strftime("%Y-%m-%d") if hasattr(row["date"], "strftime") else str(row["date"])[:10],
+            str(row["platform"]),
+            str(row["note"]),
+        )
+        for _, row in notes.iterrows()
+    }
+    st.session_state.pending_deletes &= loaded_keys
+
 # ---------------------------------------------------------------------------
 # Sidebar -- settings
 # ---------------------------------------------------------------------------
@@ -567,6 +585,9 @@ if not notes.empty:
                 note_text    = str(row["note"])
                 row_key      = (date_str, platform_val, note_text)
 
+                if row_key in st.session_state.pending_deletes:
+                    continue  # hide until cache refreshes with the deletion
+
                 if st.session_state.editing_note == row_key:
                     # ---- edit mode ----
                     ec = st.columns([2, 2, 5, 1, 1])
@@ -613,8 +634,9 @@ if not notes.empty:
                     if dc[4].button("🗑️", key=f"del_{i}_{row_key}", help="Delete note",
                                     disabled=edit_disabled):
                         ok, msg = delete_note(date_str, platform_val, note_text)
-                        st.cache_data.clear()   # always clear so stale CDN data can't re-show the note
+                        st.cache_data.clear()
                         if ok:
+                            st.session_state.pending_deletes.add(row_key)
                             st.rerun()
                         else:
                             st.error(msg)
