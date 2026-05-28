@@ -172,7 +172,7 @@ def save_note(note_date: str, platform: str, note_text: str):
 # Data loading
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=300)
 def load_rankings() -> pd.DataFrame:
     try:
         df = pd.read_csv(RANKINGS_RAW, parse_dates=["date"])
@@ -267,21 +267,23 @@ if platform_df.empty:
     st.info(f"No data yet for {cfg['label']}. Check back after the next scrape.")
     st.stop()
 
-min_date     = platform_df["date"].min().date()
-max_date     = platform_df["date"].max().date()
-default_start = max(min_date, max_date - timedelta(days=29))
+min_date      = platform_df["date"].min().date()
+max_date      = platform_df["date"].max().date()
+today         = date.today()
+default_end   = max(max_date, today)
+default_start = max(min_date, default_end - timedelta(days=29))
 
 date_range = st.sidebar.date_input(
     "Date range",
-    value=(default_start, max_date),
+    value=(default_start, default_end),
     min_value=min_date,
-    max_value=max_date,
+    max_value=default_end,
 )
 
 if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
     start_date, end_date = date_range
 else:
-    start_date, end_date = default_start, max_date
+    start_date, end_date = default_start, default_end
 
 # ---------------------------------------------------------------------------
 # Sidebar -- add note form
