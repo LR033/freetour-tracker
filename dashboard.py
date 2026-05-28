@@ -195,8 +195,9 @@ def _normalise_notes(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+@st.cache_data(ttl=60)
 def load_notes() -> pd.DataFrame:
-    """Fetch notes from GitHub raw URL. Called only on fresh page load."""
+    """Fetch notes from GitHub raw URL. Cached for 60 s so all users see fresh data."""
     try:
         df = pd.read_csv(NOTES_RAW, parse_dates=["date"])
         return _normalise_notes(df[["date", "platform", "note"]].dropna(subset=["note"]))
@@ -243,13 +244,7 @@ st.markdown(
 
 df = load_rankings()
 
-# Session state is the single source of truth for notes.
-# On fresh page load (notes_df absent) we fetch from GitHub.
-# After any mutation we update session state directly -- no cache involved.
-if "notes_df" not in st.session_state:
-    st.session_state.notes_df = load_notes()
-
-notes = st.session_state.notes_df
+notes = load_notes()
 
 # ---------------------------------------------------------------------------
 # Sidebar -- settings
@@ -336,15 +331,7 @@ if submitted:
         )
         if ok:
             st.sidebar.success(msg)
-            # Append to session state immediately so the note shows without a round-trip
-            new_row = pd.DataFrame([{
-                "date": pd.to_datetime(str(note_date_input)),
-                "platform": platform_val,
-                "note": note_text_input.strip(),
-            }])
-            st.session_state.notes_df = _normalise_notes(pd.concat(
-                [st.session_state.notes_df, new_row], ignore_index=True
-            ))
+            st.cache_data.clear()
             st.rerun()
         else:
             st.sidebar.error(msg)

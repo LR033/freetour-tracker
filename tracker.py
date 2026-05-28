@@ -76,20 +76,50 @@ async def scrape_positions() -> dict:
         await page.wait_for_load_state("networkidle", timeout=30_000)
         await page.wait_for_timeout(1_500)
 
+        # --- Dismiss GDPR cookie banner if present ---
+        try:
+            gdpr_btn = page.locator("#gdpr button").first
+            if await gdpr_btn.count() > 0:
+                await gdpr_btn.wait_for(state="visible", timeout=3_000)
+                await gdpr_btn.click()
+                await page.wait_for_timeout(800)
+                print("  Dismissed GDPR banner.")
+        except Exception:
+            pass
+
+        # --- Wait for filter panel to finish its initial load ---
+        try:
+            await page.wait_for_selector(
+                ".js-city-filters:not(.filters-preload)", timeout=15_000
+            )
+        except Exception:
+            pass
+        await page.wait_for_timeout(500)
+
         # --- Apply "Tour Language → English" filter ---
         print("Applying filter: Tour Language → English …")
         lang_label = page.locator('label[for="lang-english"]').first
         await lang_label.wait_for(state="visible", timeout=15_000)
-        await lang_label.click()
-        await page.wait_for_load_state("networkidle", timeout=20_000)
+        await lang_label.click(force=True)
+        try:
+            await page.wait_for_selector(
+                ".js-city-filters:not(.filters-preload)", timeout=15_000
+            )
+        except Exception:
+            pass
         await page.wait_for_timeout(1_000)
 
         # --- Apply "Category → Walking Tour" filter ---
         print("Applying filter: Category → Walking Tour …")
         type_label = page.locator('label[for="type-Walking-Tour"]').first
         await type_label.wait_for(state="visible", timeout=15_000)
-        await type_label.click()
-        await page.wait_for_load_state("networkidle", timeout=20_000)
+        await type_label.click(force=True)
+        try:
+            await page.wait_for_selector(
+                ".js-city-filters:not(.filters-preload)", timeout=15_000
+            )
+        except Exception:
+            pass
         await page.wait_for_timeout(1_000)
 
         # --- Load ALL results by clicking "Show more activities" ---
