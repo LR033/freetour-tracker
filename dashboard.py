@@ -239,11 +239,18 @@ def load_rankings() -> pd.DataFrame:
     return df
 
 
+def _normalise_notes(df: pd.DataFrame) -> pd.DataFrame:
+    """Ensure the date column is always datetime64 regardless of how the df was built."""
+    if not df.empty:
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    return df
+
+
 def load_notes() -> pd.DataFrame:
     """Fetch notes from GitHub raw URL. Called only on fresh page load."""
     try:
         df = pd.read_csv(NOTES_RAW, parse_dates=["date"])
-        return df[["date", "platform", "note"]].dropna(subset=["note"])
+        return _normalise_notes(df[["date", "platform", "note"]].dropna(subset=["note"]))
     except Exception:
         return pd.DataFrame(columns=["date", "platform", "note"])
 
@@ -390,9 +397,9 @@ if submitted:
                 "platform": platform_val,
                 "note": note_text_input.strip(),
             }])
-            st.session_state.notes_df = pd.concat(
+            st.session_state.notes_df = _normalise_notes(pd.concat(
                 [st.session_state.notes_df, new_row], ignore_index=True
-            )
+            ))
             st.rerun()
         else:
             st.sidebar.error(msg)
@@ -616,7 +623,7 @@ if not notes.empty:
                                 )
                                 ndf.loc[mask, "platform"] = new_plat
                                 ndf.loc[mask, "note"] = new_text.strip()
-                                st.session_state.notes_df = ndf
+                                st.session_state.notes_df = _normalise_notes(ndf)
                                 st.session_state.editing_note = None
                                 st.rerun()
                             else:
@@ -648,7 +655,7 @@ if not notes.empty:
                                 & (ndf["platform"] == platform_val)
                                 & (ndf["note"] == note_text)
                             )
-                            st.session_state.notes_df = ndf[~mask].reset_index(drop=True)
+                            st.session_state.notes_df = _normalise_notes(ndf[~mask].reset_index(drop=True))
                             st.rerun()
                         else:
                             st.error(msg)
