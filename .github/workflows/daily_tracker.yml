@@ -1,0 +1,43 @@
+name: Daily Rankings Tracker
+
+on:
+  schedule:
+    - cron: "0 9 * * *"   # 9 AM UTC = 10 AM Paris (CET+1 / CEST+2 in summer)
+  workflow_dispatch:        # allow manual run from the Actions tab
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # needed to commit and push rankings.csv
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright + Chromium
+        run: playwright install --with-deps chromium
+
+      - name: Run Freetour tracker
+        run: python tracker.py
+
+      - name: Run GuruWalk tracker
+        run: python guruwalk_tracker.py
+
+      - name: Commit and push rankings.csv
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add rankings.csv
+          git diff --cached --quiet && echo "No new data to commit." || \
+            git commit -m "rankings: $(date -u +%Y-%m-%d)"
+          git push

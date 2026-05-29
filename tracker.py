@@ -240,6 +240,10 @@ def generate_chart() -> None:
 # ---------------------------------------------------------------------------
 
 def git_push() -> None:
+    if os.getenv("CI"):
+        print("\nRunning in CI -- git push handled by workflow.")
+        return
+
     repo = Path(__file__).parent
     today = date.today().isoformat()
 
