@@ -19,7 +19,7 @@ BASE_URL = "https://www.freetour.com/paris"
 PROVIDER_KEYWORD = "discover walks"
 TARGET_TOURS = [
     "Le Marais Free Tour: Where Parisians Go",
-    "Paris Icons Express Tour - Notre-Dame to Louvre. Small group",
+    "Paris Icons Express Free Tour: Notre-Dame to Louvre",
     "Montmartre Paris Free Tour: Moulin Rouge to Sacre Coeur",
     "Paris Left Bank: Writers, Revolution & Black Coffee",
 ]
@@ -32,7 +32,7 @@ PARIS_LON = 2.3522
 
 SHORT_NAMES = {
     "Le Marais Free Tour: Where Parisians Go": "Le Marais",
-    "Paris Icons Express Tour - Notre-Dame to Louvre. Small group": "Paris Icons",
+    "Paris Icons Express Free Tour: Notre-Dame to Louvre": "Paris Icons",
     "Montmartre Paris Free Tour: Moulin Rouge to Sacre Coeur": "Montmartre",
     "Paris Left Bank: Writers, Revolution & Black Coffee": "Left Bank",
 }
@@ -49,7 +49,7 @@ def normalize(text: str) -> str:
 def match_tour(title: str) -> Optional[str]:
     title_n = normalize(title)
     for t in TARGET_TOURS:
-        if normalize(t) in title_n or title_n in normalize(t):
+        if normalize(t) == title_n:
             return t
     return None
 
