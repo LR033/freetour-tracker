@@ -37,13 +37,13 @@ PLATFORMS = {
         "provider": "Discover Walks",
         "tours": [
             "Le Marais Free Tour: Where Parisians Go",
-            "Paris Icons Express Tour - Notre-Dame to Louvre. Small group",
+            "Paris Icons Express Free Tour: Notre-Dame to Louvre",
             "Montmartre Paris Free Tour: Moulin Rouge to Sacre Coeur",
             "Paris Left Bank: Writers, Revolution & Black Coffee",
         ],
         "short_names": {
             "Le Marais Free Tour: Where Parisians Go": "Le Marais",
-            "Paris Icons Express Tour - Notre-Dame to Louvre. Small group": "Paris Icons",
+            "Paris Icons Express Free Tour: Notre-Dame to Louvre": "Paris Icons",
             "Montmartre Paris Free Tour: Moulin Rouge to Sacre Coeur": "Montmartre",
             "Paris Left Bank: Writers, Revolution & Black Coffee": "Left Bank",
         },
