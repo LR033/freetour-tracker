@@ -22,6 +22,7 @@ TARGET_TOURS = [
     "Paris Icons Express Free Tour: Notre-Dame to Louvre",
     "Montmartre Paris Free Tour: Moulin Rouge to Sacre Coeur",
     "Paris Left Bank: Writers, Revolution & Black Coffee",
+    "Places Parisians Love: Classic Treasures, Hidden Gems & Locals' Picks",
 ]
 
 RANKINGS_FILE = Path(__file__).parent / "rankings.csv"
@@ -35,6 +36,7 @@ SHORT_NAMES = {
     "Paris Icons Express Free Tour: Notre-Dame to Louvre": "Paris Icons",
     "Montmartre Paris Free Tour: Moulin Rouge to Sacre Coeur": "Montmartre",
     "Paris Left Bank: Writers, Revolution & Black Coffee": "Left Bank",
+    "Places Parisians Love: Classic Treasures, Hidden Gems & Locals' Picks": "Parisians Love",
 }
 
 
