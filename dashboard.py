@@ -545,15 +545,21 @@ avg_fig = go.Figure(go.Bar(
     textposition="outside",
 ))
 avg_fig.update_layout(
-    xaxis=dict(title="Average position (lower = better)", autorange=True),
-    yaxis=dict(title=""),
+    xaxis=dict(
+        title="Average position (lower = better)",
+        tickfont=dict(color="#ffffff"),
+        titlefont=dict(color="#ffffff"),
+        gridcolor="rgba(255,255,255,0.15)",
+    ),
+    yaxis=dict(
+        tickfont=dict(color="#ffffff"),
+    ),
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+    font=dict(color="#ffffff"),
     margin=dict(l=0, r=60, t=20, b=0),
-    plot_bgcolor="#ffffff",
-    paper_bgcolor="#ffffff",
     height=50 + 60 * len(avg_data),
 )
-avg_fig.update_xaxes(showgrid=True, gridcolor="#f0f0f0")
-avg_fig.update_yaxes(showgrid=False)
 
 st.plotly_chart(avg_fig, use_container_width=True)
 
