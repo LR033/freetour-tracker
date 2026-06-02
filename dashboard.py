@@ -524,12 +524,7 @@ else:
     cutoff = end_date - _cutoffs[avg_window]
     avg_df = filtered[filtered["date"].dt.date >= cutoff].copy()
 
-avg_data = (
-    avg_df.groupby("tour")["position"]
-    .mean()
-    .reset_index()
-    .rename(columns={"position": "avg_position"})
-)
+avg_data = avg_df.groupby("tour")["position"].mean().reset_index().rename(columns={"position": "avg_position"})
 avg_data["short"] = avg_data["tour"].map(lambda t: short_names.get(t, t))
 avg_data["color"] = avg_data["tour"].apply(
     lambda t: colors[tours.index(t) % len(colors)] if t in tours else "#aaa"
