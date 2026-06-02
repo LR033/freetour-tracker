@@ -272,14 +272,14 @@ if platform_df.empty:
 min_date      = platform_df["date"].min().date()
 max_date      = platform_df["date"].max().date()
 today         = date.today()
-default_end   = max(max_date, today)
+default_end   = today
 default_start = max(min_date, default_end - timedelta(days=29))
 
 date_range = st.sidebar.date_input(
     "Date range",
     value=(default_start, default_end),
     min_value=min_date,
-    max_value=default_end,
+    max_value=today,
 )
 
 if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
