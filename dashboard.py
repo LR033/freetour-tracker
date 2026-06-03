@@ -501,6 +501,50 @@ fig.update_yaxes(showgrid=True, gridcolor="#f0f0f0")
 st.plotly_chart(fig, use_container_width=True)
 
 # ---------------------------------------------------------------------------
+# Average position
+# ---------------------------------------------------------------------------
+
+st.subheader("Average position by tour")
+
+avg_options = ["Last 7 days", "Last 30 days", "Last 90 days", "All time"]
+avg_window = st.selectbox("Period", avg_options, index=1)
+
+avg_cutoffs = {"Last 7 days": 7, "Last 30 days": 30, "Last 90 days": 90}
+
+if avg_window == "All time":
+    avg_df = filtered.copy()
+else:
+    cutoff = end_date - timedelta(days=avg_cutoffs[avg_window])
+    avg_df = filtered[filtered["date"].dt.date >= cutoff].copy()
+
+avg_data = avg_df.groupby("tour")["position"].mean().reset_index().rename(columns={"position": "avg_position"})
+avg_data["short"] = avg_data["tour"].map(lambda t: short_names.get(t, t))
+avg_data["color"] = avg_data["tour"].apply(lambda t: colors[tours.index(t) % len(colors)] if t in tours else "#aaa")
+avg_data = avg_data.sort_values("avg_position", ascending=False)
+
+avg_fig = go.Figure(go.Bar(
+    x=avg_data["avg_position"],
+    y=avg_data["short"],
+    orientation="h",
+    marker_color=avg_data["color"].tolist(),
+    text=avg_data["avg_position"].round(1).astype(str),
+    textposition="outside",
+    textfont=dict(color="#ffffff"),
+))
+avg_fig.update_layout(
+    xaxis_title="Average position (lower = better)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+    font_color="#ffffff",
+    margin=dict(l=0, r=60, t=20, b=0),
+    height=50 + 60 * len(avg_data),
+)
+avg_fig.update_xaxes(tickfont_color="#ffffff", title_font_color="#ffffff", gridcolor="rgba(255,255,255,0.15)")
+avg_fig.update_yaxes(tickfont_color="#ffffff")
+
+st.plotly_chart(avg_fig, use_container_width=True)
+
+# ---------------------------------------------------------------------------
 # Notes log (read-only)
 # ---------------------------------------------------------------------------
 
