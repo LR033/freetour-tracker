@@ -24,6 +24,7 @@ GITHUB_REPO     = "LR033/freetour-tracker"
 GITHUB_BRANCH   = "main"
 RANKINGS_RAW    = "https://raw.githubusercontent.com/LR033/freetour-tracker/main/rankings.csv"
 NOTES_RAW       = "https://raw.githubusercontent.com/LR033/freetour-tracker/main/notes.csv"
+TOP3_RAW        = "https://raw.githubusercontent.com/LR033/freetour-tracker/main/top3.csv"
 GITHUB_API_BASE = "https://api.github.com"
 
 # ---------------------------------------------------------------------------
@@ -205,6 +206,19 @@ def load_notes() -> pd.DataFrame:
         return _normalise_notes(df[["date", "platform", "note"]].dropna(subset=["note"]))
     except Exception:
         return pd.DataFrame(columns=["date", "platform", "note"])
+
+
+@st.cache_data(ttl=300)
+def load_top3() -> pd.DataFrame:
+    """Fetch top 3 listings from GitHub raw URL. Cached for 300 s."""
+    try:
+        df = pd.read_csv(TOP3_RAW, parse_dates=["date"])
+        df = df.dropna(subset=["position"])
+        df["position"] = df["position"].astype(int)
+        df["provider"] = df["provider"].fillna("")
+        return df
+    except Exception:
+        return pd.DataFrame(columns=["date", "source", "position", "tour", "provider"])
 
 
 # ---------------------------------------------------------------------------
@@ -613,6 +627,73 @@ avg_fig.update_xaxes(tickfont_color="#ffffff", title_font_color="#ffffff", gridc
 avg_fig.update_yaxes(tickfont_color="#ffffff")
 
 st.plotly_chart(avg_fig, use_container_width=True)
+
+# ---------------------------------------------------------------------------
+# Top 3 listings
+# ---------------------------------------------------------------------------
+
+st.subheader("Top 3 listings")
+
+top3_df = load_top3()
+top3_filtered = top3_df[
+    (top3_df["source"] == platform_key)
+    & (top3_df["date"].dt.date >= start_date)
+    & (top3_df["date"].dt.date <= end_date)
+].copy()
+
+if top3_filtered.empty:
+    st.info(f"No top 3 data yet for {cfg['label']} in the selected date range.")
+else:
+    top3_colors = {1: "#FFD700", 2: "#aaa", 3: "#cd7f32"}
+
+    top3_fig = go.Figure()
+    for pos in (1, 2, 3):
+        pos_df = top3_filtered[top3_filtered["position"] == pos].sort_values("date")
+        if pos_df.empty:
+            continue
+        top3_fig.add_trace(
+            go.Scatter(
+                x=pos_df["date"],
+                y=pos_df["tour"],
+                mode="lines+markers",
+                name=f"#{pos}",
+                line=dict(color=top3_colors[pos], width=2.5),
+                marker=dict(size=8),
+                customdata=pos_df["provider"],
+                hovertemplate=(
+                    f"<b>#{pos}</b><br>"
+                    "Date: %{x|%Y-%m-%d}<br>"
+                    "Tour: %{y}<br>"
+                    "Provider: %{customdata}<extra></extra>"
+                ),
+            )
+        )
+
+    top3_fig.update_layout(
+        yaxis=dict(title="Tour", type="category"),
+        xaxis=dict(title="Date"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        margin=dict(l=0, r=0, t=60, b=0),
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        height=400,
+    )
+    top3_fig.update_xaxes(showgrid=True, gridcolor="#f0f0f0")
+    top3_fig.update_yaxes(showgrid=True, gridcolor="#f0f0f0")
+
+    st.plotly_chart(top3_fig, use_container_width=True)
+
+    latest_top3_date = top3_filtered["date"].max()
+    latest_top3 = (
+        top3_filtered[top3_filtered["date"] == latest_top3_date]
+        .sort_values("position")[["position", "tour", "provider"]]
+    )
+    st.caption(f"Top 3 on {latest_top3_date.strftime('%Y-%m-%d')}")
+    st.dataframe(
+        latest_top3.reset_index(drop=True),
+        use_container_width=True,
+        hide_index=True,
+    )
 
 # ---------------------------------------------------------------------------
 # Notes log (read-only)
