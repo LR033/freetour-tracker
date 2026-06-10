@@ -427,10 +427,16 @@ for i, tour in enumerate(tours):
     if tour_df.empty:
         continue
     color = colors[i % len(colors)]
+
+    dates = tour_df["date"].tolist()
+    positions = tour_df["position"].tolist()
+    in_top25 = [p if p <= 25 else None for p in positions]
+    at_cap = [25 if p > 25 else None for p in positions]
+
     fig.add_trace(
         go.Scatter(
-            x=tour_df["date"],
-            y=tour_df["position"],
+            x=dates,
+            y=in_top25,
             mode="lines+markers",
             name=short_names.get(tour, tour),
             line=dict(color=color, width=2.5),
@@ -442,6 +448,63 @@ for i, tour in enumerate(tours):
             ),
         )
     )
+
+    if any(v is not None for v in at_cap):
+        # Dotted line at the cap for the days the tour is out of the top 25.
+        fig.add_trace(
+            go.Scatter(
+                x=dates,
+                y=at_cap,
+                mode="lines",
+                line=dict(color=color, width=1.5, dash="dot"),
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
+        # X markers on the first and last day of each out-of-top-25 streak.
+        streak_x, streak_y = [], []
+        run = []
+        for idx, p in enumerate(positions):
+            if p > 25:
+                run.append(idx)
+            else:
+                if run:
+                    for j in sorted({run[0], run[-1]}):
+                        streak_x.append(dates[j])
+                        streak_y.append(25)
+                    run = []
+        if run:
+            for j in sorted({run[0], run[-1]}):
+                streak_x.append(dates[j])
+                streak_y.append(25)
+        fig.add_trace(
+            go.Scatter(
+                x=streak_x,
+                y=streak_y,
+                mode="markers",
+                marker=dict(color=color, symbol="x", size=10),
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
+
+# --- Top 25 limit line ---
+fig.add_shape(
+    type="line",
+    xref="paper", yref="y",
+    x0=0, x1=1,
+    y0=25, y1=25,
+    line=dict(color="red", width=1.5, dash="dash"),
+)
+fig.add_annotation(
+    xref="paper", yref="y",
+    x=1, y=25,
+    text="Top 25 limit",
+    showarrow=False,
+    xanchor="right",
+    yanchor="bottom",
+    font=dict(size=11, color="red"),
+)
 
 # --- Note annotations ---
 relevant_notes = notes[
