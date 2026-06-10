@@ -38,6 +38,7 @@ SHORT_NAMES = {
 }
 
 RANKINGS_FILE = Path(__file__).parent / "rankings.csv"
+TOP3_FILE = Path(__file__).parent / "top3.csv"
 
 PARIS_LAT = 48.8566
 PARIS_LON = 2.3522
@@ -69,8 +70,9 @@ def match_tour(title: str) -> Optional[str]:
 # Scraper
 # ---------------------------------------------------------------------------
 
-async def scrape_positions() -> dict:
+async def scrape_positions() -> tuple:
     results: dict = {t: None for t in TARGET_TOURS}
+    top3: list = []
 
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(headless=True)
@@ -120,6 +122,11 @@ async def scrape_positions() -> dict:
             title_text = (await title_el.inner_text()).strip() if title_el else ""
             provider_text = (await provider_el.inner_text()).strip() if provider_el else ""
 
+            if idx <= 3:
+                top3.append(
+                    {"position": idx, "tour": title_text, "provider": provider_text}
+                )
+
             if PROVIDER_KEYWORD not in provider_text.lower():
                 continue
 
@@ -130,7 +137,7 @@ async def scrape_positions() -> dict:
 
         await browser.close()
 
-    return results
+    return results, top3
 
 
 # ---------------------------------------------------------------------------
@@ -149,6 +156,22 @@ def save_to_csv(results: dict) -> None:
             writer.writerow([today, "guruwalk", tour, pos if pos is not None else ""])
 
     print(f"\nResults saved to {RANKINGS_FILE}")
+
+
+def save_top3_csv(top3: list) -> None:
+    today = date.today().isoformat()
+    file_exists = TOP3_FILE.exists()
+
+    with open(TOP3_FILE, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["date", "source", "position", "tour", "provider"])
+        for entry in top3:
+            writer.writerow(
+                [today, "guruwalk", entry["position"], entry["tour"], entry["provider"]]
+            )
+
+    print(f"Top 3 saved to {TOP3_FILE}")
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +195,7 @@ def git_push() -> None:
         return
 
     print("\nPushing to GitHub ...")
-    run(["git", "add", "rankings.csv"])
+    run(["git", "add", "rankings.csv", "top3.csv"])
 
     status = run(["git", "status", "--porcelain"])
     if not status.stdout.strip():
@@ -200,7 +223,7 @@ async def main() -> None:
     print("GuruWalk/paris -- Charing Cross Position Tracker")
     print("=" * 60)
 
-    results = await scrape_positions()
+    results, top3 = await scrape_positions()
 
     print("\n--- Summary ---")
     for tour, pos in results.items():
@@ -211,6 +234,7 @@ async def main() -> None:
             print(f"  N/A   {label}  (not listed today)")
 
     save_to_csv(results)
+    save_top3_csv(top3)
     git_push()
 
     print("\nDone.")
