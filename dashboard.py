@@ -644,44 +644,47 @@ top3_filtered = top3_df[
 if top3_filtered.empty:
     st.info(f"No top 3 data yet for {cfg['label']} in the selected date range.")
 else:
-    top3_colors = {1: "#FFD700", 2: "#aaa", 3: "#cd7f32"}
+    if top3_filtered["date"].nunique() < 2:
+        st.info("Chart will appear as more data is collected")
+    else:
+        top3_colors = {1: "#FFD700", 2: "#aaaaaa", 3: "#cd7f32"}
 
-    top3_fig = go.Figure()
-    for pos in (1, 2, 3):
-        pos_df = top3_filtered[top3_filtered["position"] == pos].sort_values("date")
-        if pos_df.empty:
-            continue
-        top3_fig.add_trace(
-            go.Scatter(
-                x=pos_df["date"],
-                y=pos_df["tour"],
-                mode="lines+markers",
-                name=f"#{pos}",
-                line=dict(color=top3_colors[pos], width=2.5),
-                marker=dict(size=8),
-                customdata=pos_df["provider"],
-                hovertemplate=(
-                    f"<b>#{pos}</b><br>"
-                    "Date: %{x|%Y-%m-%d}<br>"
-                    "Tour: %{y}<br>"
-                    "Provider: %{customdata}<extra></extra>"
-                ),
+        top3_fig = go.Figure()
+        for pos in (1, 2, 3):
+            pos_df = top3_filtered[top3_filtered["position"] == pos].sort_values("date")
+            if pos_df.empty:
+                continue
+            top3_fig.add_trace(
+                go.Scatter(
+                    x=pos_df["date"],
+                    y=pos_df["provider"],
+                    mode="lines+markers",
+                    name=f"#{pos}",
+                    line=dict(color=top3_colors[pos], width=2.5),
+                    marker=dict(size=8),
+                    customdata=pos_df["tour"],
+                    hovertemplate=(
+                        f"<b>#{pos}</b><br>"
+                        "Date: %{x|%Y-%m-%d}<br>"
+                        "Tour: %{customdata}<br>"
+                        "Provider: %{y}<extra></extra>"
+                    ),
+                )
             )
+
+        top3_fig.update_layout(
+            yaxis=dict(title="Provider", type="category"),
+            xaxis=dict(title="Date"),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(l=0, r=0, t=60, b=0),
+            plot_bgcolor="#ffffff",
+            paper_bgcolor="#ffffff",
+            height=400,
         )
+        top3_fig.update_xaxes(showgrid=True, gridcolor="#f0f0f0")
+        top3_fig.update_yaxes(showgrid=True, gridcolor="#f0f0f0")
 
-    top3_fig.update_layout(
-        yaxis=dict(title="Tour", type="category"),
-        xaxis=dict(title="Date"),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        margin=dict(l=0, r=0, t=60, b=0),
-        plot_bgcolor="#ffffff",
-        paper_bgcolor="#ffffff",
-        height=400,
-    )
-    top3_fig.update_xaxes(showgrid=True, gridcolor="#f0f0f0")
-    top3_fig.update_yaxes(showgrid=True, gridcolor="#f0f0f0")
-
-    st.plotly_chart(top3_fig, use_container_width=True)
+        st.plotly_chart(top3_fig, use_container_width=True)
 
     latest_top3_date = top3_filtered["date"].max()
     latest_top3 = (
