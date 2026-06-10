@@ -271,6 +271,12 @@ def git_push() -> None:
         print(f"  Commit failed: {commit.stderr.strip()}")
         return
 
+    pull = run(["git", "pull", "--rebase", "origin", "main"])
+    if pull.returncode != 0:
+        print(f"  Pull --rebase failed: {pull.stderr.strip()}")
+        print("  Aborting push. Resolve the conflict manually, then push.")
+        return
+
     push = run(["git", "push", "origin", "main"])
     if push.returncode == 0:
         print("  Pushed successfully.")
