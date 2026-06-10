@@ -462,7 +462,7 @@ for i, tour in enumerate(tours):
             )
         )
         # X markers on the first and last day of each out-of-top-25 streak.
-        streak_x, streak_y = [], []
+        streak_x, streak_y, streak_real = [], [], []
         run = []
         for idx, p in enumerate(positions):
             if p > 25:
@@ -472,11 +472,13 @@ for i, tour in enumerate(tours):
                     for j in sorted({run[0], run[-1]}):
                         streak_x.append(dates[j])
                         streak_y.append(25)
+                        streak_real.append(positions[j])
                     run = []
         if run:
             for j in sorted({run[0], run[-1]}):
                 streak_x.append(dates[j])
                 streak_y.append(25)
+                streak_real.append(positions[j])
         fig.add_trace(
             go.Scatter(
                 x=streak_x,
@@ -484,7 +486,12 @@ for i, tour in enumerate(tours):
                 mode="markers",
                 marker=dict(color=color, symbol="x", size=10),
                 showlegend=False,
-                hoverinfo="skip",
+                customdata=streak_real,
+                hovertemplate=(
+                    f"<b>{short_names.get(tour, tour)}</b><br>"
+                    "Out of top 25<br>"
+                    "Real position: #%{customdata}<extra></extra>"
+                ),
             )
         )
 
