@@ -37,7 +37,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add rankings.csv
+          git add rankings.csv top3.csv
           git diff --cached --quiet && echo "No new data to commit." || \
             git commit -m "rankings: $(date -u +%Y-%m-%d)"
           git push
