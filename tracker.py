@@ -137,7 +137,7 @@ async def scrape_positions() -> tuple:
             try:
                 await show_more.scroll_into_view_if_needed()
                 await show_more.click(force=True)
-                await page.wait_for_load_state("networkidle", timeout=20_000)
+                await page.wait_for_load_state("domcontentloaded", timeout=20_000)
                 await page.wait_for_timeout(1_000)
             except Exception as e:
                 print(f"  Show more button detached or unavailable; all results loaded.")
