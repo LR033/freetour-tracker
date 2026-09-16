@@ -77,7 +77,7 @@ async def scrape_positions() -> tuple:
 
         print(f"Loading {BASE_URL} …")
         await page.goto(BASE_URL, wait_until="domcontentloaded", timeout=60_000)
-        await page.wait_for_load_state("networkidle", timeout=30_000)
+        await page.wait_for_load_state("domcontentloaded", timeout=30_000)
         await page.wait_for_timeout(1_500)
 
         # --- Dismiss GDPR cookie banner if present ---
